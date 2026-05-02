@@ -1,0 +1,22 @@
+# 前端
+node_modules/
+dist/
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+*.pt
+*.bin
+
+# 模型/音频
+models/
+audio/
+*.wav
+*.sqlite
+
+# 系统文件
+.idea/
+.vscode/
