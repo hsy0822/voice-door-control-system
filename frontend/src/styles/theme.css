@@ -1,0 +1,21 @@
+:root {
+  --van-primary-color: #1989fa;
+  --van-button-primary-background: #1989fa;
+  --van-nav-bar-background: #1989fa;
+  --van-nav-bar-title-text-color: #fff;
+  --van-nav-bar-icon-color: #fff;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  background: #f7f8fa;
+}
+
+.page-safe {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
