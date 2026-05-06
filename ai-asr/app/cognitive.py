@@ -39,9 +39,21 @@ def _normalize_question(s: str) -> str:
 
 
 def _normalize_arithmetic_asr_typos(t: str) -> str:
-    """口算短答里 ASR 常见误字（八 被写成 吧）。"""
+    """口算短答里 ASR 常见近音/误字（八↔吧、六↔溜 等）。"""
     t = t.replace("答案是吧", "答案是八")
     t = t.replace("等于吧", "等于八")
+    t = t.replace("结果是吧", "结果是八")
+    # 「是八」常被写成「是吧」
+    t = re.sub(r"是\s*吧", "八", t)
+    t = t.replace("是吧", "八")
+    t = t.replace("是巴", "八").replace("是拔", "八")
+    # 整句只有「吧」类语气时，口算场景多为报「八」
+    if re.fullmatch(r"[是吧嗯啊哦。！？…]+", t):
+        t = "八"
+    # 数字近音别字（保守替换，仅常见）
+    t = t.replace("溜", "六").replace("遛", "六")
+    t = t.replace("拐", "七")
+    t = t.replace("勾", "九").replace("酒", "九")
     return t
 
 
@@ -52,14 +64,23 @@ def _strip_leading_fillers(t: str) -> str:
     return t
 
 
+def _strip_trailing_fillers(t: str) -> str:
+    """勿去掉「吧」：需先经 _normalize_arithmetic_asr_typos 处理「是吧」→「八」。"""
+    while t and t[-1] in "啊呀嘛呢哇的哦噢呐":
+        t = t[:-1]
+    return t
+
+
 def _extract_int_arithmetic_fallback(t: str) -> Optional[int]:
     """
     算术短答兜底：ASR 常把「答案是三」听成「暗示三」「把暗示三」等，
     在无法按严格句式解析时，从短句里抽取最可能的个位数答案。
     """
-    t = _normalize_arithmetic_asr_typos(_normalize_text(t))
+    t = _normalize_text(t)
     t = re.sub(r"[。，、！？·]", "", t)
     t = _strip_leading_fillers(t.replace(" ", "").replace("\u3000", ""))
+    t = _normalize_arithmetic_asr_typos(t)
+    t = _strip_trailing_fillers(t)
     if not t:
         return None
 
@@ -76,21 +97,32 @@ def _extract_int_arithmetic_fallback(t: str) -> Optional[int]:
             if ch in _CN_DIGITS and ch != "十":
                 return int(_CN_DIGITS[ch])
 
-    # 句末阿拉伯数字
-    m_tail = re.search(r"(\d)\s*$", t)
-    if m_tail:
-        return int(m_tail.group(1))
+    # 句末阿拉伯数字（优先两位数以覆盖 10～15）
+    m_tail2 = re.search(r"(\d{1,2})\s*$", t)
+    if m_tail2:
+        try:
+            v = int(m_tail2.group(1))
+            if 0 <= v <= 99:
+                return v
+        except ValueError:
+            pass
 
     return None
 
 
 def _extract_int_from_answer(text: str) -> Optional[int]:
     """从识别文本中提取整数答案（阿拉伯或中文）。"""
-    t = _normalize_arithmetic_asr_typos(_normalize_text(text))
+    t = _normalize_text(text)
+    t = re.sub(r"[。，、！？·]", "", t)
+    t = _strip_leading_fillers(t)
+    t = _normalize_arithmetic_asr_typos(t)
+    t = _strip_trailing_fillers(t)
     m = re.search(r"-?\d+", t)
     if m:
         try:
-            return int(m.group(0))
+            v = int(m.group(0))
+            if 0 <= v <= 99:
+                return v
         except ValueError:
             pass
     # 简单中文数字：十 / 十几 / 几十几
@@ -191,15 +223,46 @@ def whisper_context_prompt(question: str) -> str:
     return "门禁短答。"
 
 
+def _strip_answer_particles(s: str) -> str:
+    """去掉句尾语气/结构助词，便于「红」「红色」对齐。"""
+    s = _normalize_text(s)
+    s = re.sub(r"(的|了|吗|呢|啊|呀|吧|哇|哦|噢)+$", "", s)
+    s = re.sub(r"[。，、！？]+$", "", s)
+    return s
+
+
+def _lev_le_1(a: str, b: str) -> bool:
+    """短串编辑距离 ≤1（仅用于≤4 字颜色类）。"""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:
+        return sum(x != y for x, y in zip(a, b)) <= 1
+    if la + 1 == lb:
+        return any((b[:k] + b[k + 1 :]) == a for k in range(lb))
+    if lb + 1 == la:
+        return _lev_le_1(b, a)
+    return False
+
+
 def _fuzzy_accept(user: str, accepted_fragments: List[str]) -> bool:
-    u = _normalize_text(user)
+    u = _strip_answer_particles(user)
     if not u:
         return False
     for frag in accepted_fragments:
-        f = _normalize_text(frag)
+        f = _strip_answer_particles(frag)
         if not f:
             continue
         if f in u or u in f:
+            return True
+        # 前两字重叠（「天蓝」vs「蓝色」弱匹配）
+        if len(f) >= 2 and f[:2] in u:
+            return True
+        if len(u) >= 2 and u[:2] in f:
+            return True
+        if len(u) <= 4 and len(f) <= 4 and _lev_le_1(u, f):
             return True
     return False
 

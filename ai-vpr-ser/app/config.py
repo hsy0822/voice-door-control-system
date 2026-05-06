@@ -22,13 +22,19 @@ VOICEPRINTS_ROOT = Path(os.environ.get("VOICEPRINTS_ROOT", "")) if os.environ.ge
 ).strip() else None
 
 TARGET_SR = 16000
-MIN_DURATION_SEC = float(os.environ.get("VPR_MIN_DURATION_SEC", "0.5"))
+# 与门禁短答对齐；过短易 400（trim 后常见 0.35–0.5s）
+MIN_DURATION_SEC = float(os.environ.get("VPR_MIN_DURATION_SEC", "0.35"))
 MAX_DURATION_SEC = float(os.environ.get("VPR_MAX_DURATION_SEC", "5.0"))
 MAX_UPLOAD_BYTES = int(os.environ.get("VPR_MAX_UPLOAD_BYTES", str(8 * 1024 * 1024)))
 
 # SpeechBrain Hub 模型 ID（首次运行会下载到 MODELS_DIR 下对应子目录）
 SPKREC_SOURCE = os.environ.get("SPKREC_SOURCE", "speechbrain/spkrec-ecapa-voxceleb")
 EMOTION_SOURCE = os.environ.get("EMOTION_SOURCE", "speechbrain/emotion-recognition-wav2vec2-IEMOCAP")
+# SpeechBrain 情感失败时（如缺少 k2）改用 Hugging Face transformers 音频分类
+EMOTION_HF_MODEL = os.environ.get(
+    "EMOTION_HF_MODEL",
+    "superb/wav2vec2-base-superb-er",
+)
 
 DEVICE = os.environ.get("VPR_SER_DEVICE", "cpu")
 

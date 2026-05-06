@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.deps import ResidentUser
 from app.models import VoicePrint
@@ -18,6 +19,27 @@ router = APIRouter(prefix="/voiceprint", tags=["voiceprint"])
 @router.get("/prompts")
 def voiceprint_prompts() -> dict:
     return {"segments": pick_three()}
+
+
+@router.get("/status")
+def voiceprint_status(user: ResidentUser, db: Session = Depends(get_db)) -> dict:
+    """是否已录入：数据库记录 + 磁盘三段 wav；门禁是否走真实声纹取决于 VOICE_VERIFY_URL 等配置。"""
+    row = db.scalar(select(VoicePrint).where(VoicePrint.user_id == user.id))
+    base = settings.data_dir / "voiceprints" / str(user.id)
+    segs = {f"seg{i}": (base / f"seg{i}.wav").is_file() for i in (1, 2, 3)}
+    url_ok = bool(settings.voice_verify_url.strip())
+    return {
+        "saved_in_database": row is not None,
+        "segment_files": segs,
+        "all_segments_present": all(segs.values()),
+        "voice_verify_url_configured": url_ok,
+        "segments_stub_enabled": bool(settings.voice_verify_allow_segments_stub),
+        "mock_voiceprint_match": bool(settings.mock_voiceprint_match),
+        "ready_for_real_verify": url_ok
+        and all(segs.values())
+        and not settings.mock_voiceprint_match
+        and not settings.voice_verify_allow_segments_stub,
+    }
 
 
 @router.post("/submit")

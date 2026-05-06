@@ -6,6 +6,20 @@
       请<strong>匀速朗读</strong>系统给出的 3 段随机文字，每段单独录制；环境尽量安静。
     </van-notice-bar>
 
+    <van-cell-group v-if="status" inset title="录入与核验状态" class="status-group">
+      <van-cell title="后端已保存记录" :value="status.saved_in_database ? '是' : '否'" />
+      <van-cell title="三段录音文件齐全" :value="status.all_segments_present ? '是' : '否'" />
+      <van-cell
+        title="已配置声纹服务 URL"
+        :value="status.voice_verify_url_configured ? '是' : '否'"
+      />
+      <van-cell
+        title="可走真实声纹比对"
+        :label="status.ready_for_real_verify ? '' : '请配置 VOICE_VERIFY_URL 并设置 ai-vpr-ser 的 VOICEPRINTS_ROOT'"
+        :value="status.ready_for_real_verify ? '是' : '否'"
+      />
+    </van-cell-group>
+
     <div class="toolbar">
       <van-button size="small" plain type="primary" round icon="replay" @click="rerollPrompts">
         换一组随机文本
@@ -50,7 +64,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import { useRouter } from 'vue-router'
-import { fetchVoiceprintPromptsApi, submitVoiceprintApi } from '@/api/index'
+import {
+  fetchVoiceprintPromptsApi,
+  fetchVoiceprintStatusApi,
+  submitVoiceprintApi,
+} from '@/api/index'
 import { toastApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import { HoldWavRecorder } from '@/utils/wavRecorder'
@@ -63,6 +81,7 @@ const prompts = ref(['加载中…', '…', '…'])
 const blobs = ref([null, null, null])
 const holdingIdx = ref(-1)
 const loading = ref(false)
+const status = ref(null)
 
 let recorder = null
 let maxEv = null
@@ -131,6 +150,14 @@ function stopSeg(i) {
   showToast({ type: 'success', message: `第 ${i + 1} 段已完成` })
 }
 
+async function loadStatus() {
+  try {
+    status.value = await fetchVoiceprintStatusApi()
+  } catch (_) {
+    status.value = null
+  }
+}
+
 async function submit() {
   if (!allReady.value) {
     showToast('请先完成 3 段录音')
@@ -139,6 +166,7 @@ async function submit() {
   loading.value = true
   try {
     await submitVoiceprintApi({ userId: auth.userId, files: blobs.value })
+    await loadStatus()
     showSuccessToast('声纹录入成功')
     router.replace('/user-center')
   } catch (e) {
@@ -149,7 +177,10 @@ async function submit() {
   }
 }
 
-onMounted(loadPrompts)
+onMounted(() => {
+  loadPrompts()
+  loadStatus()
+})
 
 onUnmounted(() => {
   window.removeEventListener('voice-recorder-max-duration', maxEv)
@@ -158,6 +189,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.status-group {
+  margin-top: 8px;
+}
 .toolbar {
   padding: 10px 16px 0;
   display: flex;

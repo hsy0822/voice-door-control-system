@@ -28,8 +28,8 @@ MAX_CONCURRENT_TRANSCRIBE = int(os.environ.get("ASR_MAX_CONCURRENT", "2"))
 MAX_UPLOAD_BYTES = int(os.environ.get("ASR_MAX_UPLOAD_BYTES", str(8 * 1024 * 1024)))
 
 TARGET_SR = 16000
-# 门禁短答可短于 1s；过严易误拒。可用环境变量 ASR_MIN_DURATION_SEC 覆盖。
-MIN_DURATION_SEC = float(os.environ.get("ASR_MIN_DURATION_SEC", "0.5"))
+# 门禁短答可短于 1s；与 ai-vpr-ser 默认对齐。可用 ASR_MIN_DURATION_SEC 覆盖。
+MIN_DURATION_SEC = float(os.environ.get("ASR_MIN_DURATION_SEC", "0.35"))
 MAX_DURATION_SEC = 5.0
 
 # 算术题下若转写仅为单个语气字（如「好」），是否丢弃；0/false/no 则保留原字

@@ -14,6 +14,14 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+_ROOT = Path(__file__).resolve().parent.parent
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_ROOT / ".env")
+except ImportError:
+    pass
+
 from app import __version__
 from app import config, engine
 from app.audio_preprocess import AudioPreprocessError, preprocess_to_wav_pcm16
@@ -33,10 +41,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         d.mkdir(parents=True, exist_ok=True)
     if os.environ.get("VPR_SER_PRELOAD", "1").strip().lower() not in ("0", "false", "no", "off"):
         try:
-            engine.preload_models()
-            logger.info("模型预加载完成 device=%s", engine._device())
+            spk_ok, emo_real = engine.preload_models()
+            logger.info(
+                "预加载结束 device=%s 声纹=%s 情感(非占位)=%s",
+                engine._device(),
+                spk_ok,
+                emo_real,
+            )
         except Exception as e:  # noqa: BLE001
-            logger.exception("模型预加载失败（首次请求时会再尝试）: %s", e)
+            logger.exception("预加载异常（首次请求时会再尝试）: %s", e)
     yield
 
 

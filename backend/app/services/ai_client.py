@@ -54,14 +54,25 @@ async def call_voiceprint(
 
     url = settings.voice_verify_url.strip()
     if not url:
-        base = settings.data_dir / "voiceprints" / str(user_id)
-        needed = [base / f"seg{i}.wav" for i in (1, 2, 3)]
-        if all(p.is_file() for p in needed):
-            return {"ok": True, "error": "", "raw": {"stub": "local_segments"}}
+        if settings.voice_verify_allow_segments_stub:
+            base = settings.data_dir / "voiceprints" / str(user_id)
+            needed = [base / f"seg{i}.wav" for i in (1, 2, 3)]
+            if all(p.is_file() for p in needed):
+                return {"ok": True, "error": "", "raw": {"stub": "local_segments"}}
+            return {
+                "ok": False,
+                "error": "尚未完成声纹录入（缺少分段 wav）",
+                "raw": {"stub": "missing_files"},
+            }
         return {
             "ok": False,
-            "error": "尚未完成声纹录入或声纹服务未配置",
-            "raw": {"stub": "missing_files"},
+            "error": (
+                "未配置声纹核验地址：请在 backend .env 设置 VOICE_VERIFY_URL="
+                "http://127.0.0.1:8002/api/v1/voice/verify，并启动 ai-vpr-ser；"
+                "在其 .env 设置 VOICEPRINTS_ROOT 指向本后端 DATA_DIR/voiceprints。"
+                "（仅本地假通过可设 VOICE_VERIFY_ALLOW_SEGMENTS_STUB=true）"
+            ),
+            "raw": {"stub": "no_verify_url"},
         }
 
     try:

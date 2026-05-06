@@ -15,12 +15,17 @@ _TRIVIA = [
 
 
 def _random_arithmetic() -> str:
+    """加减口算，得数仅在 0～15（含）；与 ai-asr cognitive 校验一致。"""
     if random.random() < 0.5:
-        a = random.randint(1, 9)
-        b = random.randint(1, 9)
+        total = random.randint(2, 15)
+        a = random.randint(1, total - 1)
+        b = total - a
         return f"{a}+{b}=?"
-    x = random.randint(3, 18)
-    y = random.randint(1, min(9, x - 1))
+    result = random.randint(0, 15)
+    # 被减数不要过大；保证 result + y <= 20 便于口算
+    max_y = max(1, min(9, 20 - result))
+    y = random.randint(1, max_y)
+    x = result + y
     return f"{x}-{y}=?"
 
 

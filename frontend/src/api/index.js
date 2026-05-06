@@ -49,6 +49,12 @@ export async function fetchVoiceprintPromptsApi() {
   return data
 }
 
+/** 声纹是否已保存、磁盘分段是否齐全、后端是否配置真实核验 URL */
+export async function fetchVoiceprintStatusApi() {
+  const { data } = await http.get('/voiceprint/status')
+  return data
+}
+
 export async function createVisitorAuthApi({ userId, type }) {
   const { data } = await http.post('/visitor/auth', { userId, type })
   return data

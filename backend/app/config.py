@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     emotion_analyze_url: str = ""
     ai_http_timeout_sec: float = 120.0
 
+    # 仅联调：未配置 VOICE_VERIFY_URL 时若三段 wav 齐全也视为通过（不做真实声纹比对，勿用于生产）
+    voice_verify_allow_segments_stub: bool = False
+
     mock_voiceprint_match: bool = False
     mock_emotion_duress: bool = False
 

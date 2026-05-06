@@ -47,3 +47,5 @@ openai-whisper
 # ---------- ai-vpr-ser：声纹 + 情感 ----------
 speechbrain>=1,<2
 huggingface_hub>=0.20,<1
+# 情感备用：SpeechBrain 官方 IEMOCAP 模型在部分环境会强依赖可选包 k2，用 transformers 管道兜底
+transformers>=4.40,<5
