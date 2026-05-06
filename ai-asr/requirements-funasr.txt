@@ -1,20 +1,7 @@
-# 可选：中文短语音 ASR（FunASR + ModelScope）
+# 可选：FunASR + ModelScope（在已安装仓库根 requirements.txt 之后执行）
+#   pip install -r ai-asr/requirements-funasr.txt
 #
-# Windows 常见故障：pip 在编译 editdistance 时报
-#   fatal error C1083: 无法打开包括文件: "math.h"
-# 原因：Python 3.13 + Win 往往没有 editdistance 的现成 wheel，需本地编译；
-#       若未安装「Windows SDK / MSVC 头文件」，cl.exe 找不到 math.h。
-# 处理（任选其一）：
-#   1) 安装 Visual Studio Build Tools 2022，勾选「使用 C++ 的桌面开发」，
-#      并在单个组件中勾选 Windows 11 SDK（或 10.0.22621+），重启终端后再 pip install。
-#      下载：https://visualstudio.microsoft.com/visual-cpp-build-tools/
-#   2) 换用 Python 3.11 或 3.12 新建 venv，再执行本文件（部分版本可能有预编译 wheel，免编译）。
-#   3) 在 WSL2 Ubuntu 内安装本依赖（Linux 下通常一条命令即可）。
-#   4) 不设 ASR_ENGINE=funasr，继续用 Whisper（默认）。
-#
-# Linux / 华为云 ECS 一般可直接：pip install -r requirements-funasr.txt
--r requirements.txt
-# FunASR 运行时常需（部分环境 pip 未自动装全）
-torchaudio>=2.1.0
+# Windows 编译问题见本文件历史说明；不需要 FunASR 时请保持 ASR_ENGINE=whisper。
+-r ../requirements.txt
 funasr>=1.0.0
 modelscope>=1.11.0
