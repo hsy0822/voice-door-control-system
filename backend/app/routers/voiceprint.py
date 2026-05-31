@@ -10,7 +10,7 @@ from app.config import settings
 from app.db import get_db
 from app.deps import ResidentUser
 from app.models import VoicePrint
-from app.services.ai_client import save_voiceprint_segments
+from app.services.ai_client import call_voice_enroll, save_voiceprint_segments
 from app.services.voiceprint_prompts import pick_three
 
 router = APIRouter(prefix="/voiceprint", tags=["voiceprint"])
@@ -65,9 +65,26 @@ async def voiceprint_submit(
             raise HTTPException(status_code=400, detail="存在空录音文件")
         blobs.append((b, uf.filename or "seg.wav"))
 
+    # 1) 保存原始 WAV 到磁盘（保留原有逻辑）
     path_json = save_voiceprint_segments(user.id, blobs)
+
+    # 2) 调用声纹服务注册特征向量（核心修复！）
+    enroll_result = await call_voice_enroll(user.id, blobs)
+    if not enroll_result.get("ok"):
+        # 注册失败只打日志，不阻断录入（WAV 已保存，可后续补注册）
+        import logging
+        logging.getLogger(__name__).warning(
+            "声纹特征注册失败（WAV 已保存）: %s", enroll_result.get("error")
+        )
+
+    # 3) 更新数据库
     db.execute(delete(VoicePrint).where(VoicePrint.user_id == user.id))
     db.flush()
     db.add(VoicePrint(user_id=user.id, feature_path=path_json))
     db.commit()
-    return {"success": True, "message": "声纹已保存"}
+
+    return {
+        "success": True,
+        "message": "声纹已保存",
+        "enrolled": enroll_result.get("ok", False),
+    }

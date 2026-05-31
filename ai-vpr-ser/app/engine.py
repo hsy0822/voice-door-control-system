@@ -268,11 +268,14 @@ def get_emo_model() -> Any:
 
 
 def _wav_tensor_from_path(wav_path: Path) -> torch.Tensor:
-    sig, fs = torchaudio.load(str(wav_path.resolve()))
-    if sig.shape[0] > 1:
-        sig = sig.mean(dim=0, keepdim=True)
+    import soundfile as sf
+    sig, fs = sf.read(str(wav_path.resolve()))
+    if sig.ndim > 1:
+        sig = sig.mean(axis=1)
     if int(fs) != config.TARGET_SR:
-        sig = torchaudio.functional.resample(sig, orig_freq=int(fs), new_freq=config.TARGET_SR)
+        import librosa
+        sig = librosa.resample(sig, orig_sr=int(fs), target_sr=config.TARGET_SR)
+    return torch.from_numpy(sig).unsqueeze(0).float()
     return sig.to(_device())
 
 
@@ -297,22 +300,27 @@ def enrollment_path(user_id: str) -> Path:
 
 
 def try_build_enrollment_from_voiceprints_root(user_id: str) -> Optional[Path]:
-    """若配置了 VOICEPRINTS_ROOT 且存在 seg1–3.wav，则自动计算并写入注册向量。"""
     if not config.VOICEPRINTS_ROOT:
         return None
-    root = config.VOICEPRINTS_ROOT / str(user_id)
+
+    # 强制进入用户子文件夹：voiceprints/2/
+    root = Path(config.VOICEPRINTS_ROOT) / str(user_id)
     paths = [root / f"seg{i}.wav" for i in (1, 2, 3)]
+
+    # 强制检查文件是否存在
     if not all(p.is_file() for p in paths):
         return None
+
+    # 强制生成声纹模型
     embs = [embedding_from_wav_path(p) for p in paths]
     cen = np.mean(np.stack(embs, axis=0), axis=0).astype(np.float32)
     cen = cen / (float(np.linalg.norm(cen)) + 1e-8)
+
     outp = enrollment_path(user_id)
+    print(f"Creating enrollment at: {outp}")
     outp.parent.mkdir(parents=True, exist_ok=True)
     np.save(outp, cen)
-    logger.info("已从 VOICEPRINTS_ROOT 自动生成声纹注册: user=%s -> %s", user_id, outp)
     return outp
-
 
 def enroll_three_segments(user_id: str, wav_paths: list[Path]) -> Path:
     if len(wav_paths) != 3:

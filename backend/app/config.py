@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     asr_verify_url: str = "http://127.0.0.1:8090/api/v1/verify"
     voice_verify_url: str = ""
+    voice_enroll_url: str = ""          # 声纹注册服务地址
     emotion_analyze_url: str = ""
     ai_http_timeout_sec: float = 120.0
 

@@ -9,7 +9,7 @@
 #
 # 启动各服务时请先 cd 到对应子目录，再使用根目录解释器，例如：
 #   cd backend
-#   ..\.venv\Scripts\python run_server.py
+#rm -r .venv -Force   ..\.venv\Scripts\python run_server.py
 #
 # Python 版本：3.10+ 推荐（3.9 需自行验证 torch/speechbrain 轮子）。
 #
@@ -29,6 +29,7 @@ pydantic>=2.10,<3
 pydantic-core>=2.27,<3
 pydantic-settings>=2,<3
 typing_extensions>=4.8
+python-dotenv>=1,<2
 
 # ---------- 数值 / 音频（ASR + VPR 共用）----------
 numpy>=1.23,<3

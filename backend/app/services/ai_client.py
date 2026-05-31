@@ -89,6 +89,52 @@ async def call_voiceprint(
     return {"ok": ok, "error": "" if ok else "声纹不匹配", "raw": body}
 
 
+# ──────────────────────────────────────────────
+# 声纹注册：将三段 WAV 发给 ai-vpr-ser 生成特征向量
+# ──────────────────────────────────────────────
+async def call_voice_enroll(
+    user_id: int,
+    segments: list[tuple[bytes, str]],
+) -> dict[str, Any]:
+    """
+    调用声纹服务的 /api/v1/voice/enroll 接口注册声纹。
+
+    参数
+    ----
+    user_id  : 用户 ID
+    segments : [(wav_bytes, filename), ...] 三段录音
+    """
+    url = settings.voice_enroll_url.strip()
+    if not url:
+        logger.warning("未配置 VOICE_ENROLL_URL，跳过声纹特征注册（仅保存原始 WAV）")
+        return {"ok": True, "error": "", "raw": {"skipped": True, "reason": "no_enroll_url"}}
+
+    try:
+        files = {
+            f"segment{i+1}": (
+                name or f"seg{i+1}.wav",
+                blob,
+                "application/octet-stream",
+            )
+            for i, (blob, name) in enumerate(segments)
+        }
+        data = {"user_id": str(user_id)}
+        async with httpx.AsyncClient(timeout=settings.ai_http_timeout_sec) as client:
+            r = await client.post(url, files=files, data=data)
+            r.raise_for_status()
+            body = r.json()
+    except Exception as e:  # noqa: BLE001
+        logger.exception("声纹注册调用失败: %s", e)
+        return {"ok": False, "error": str(e), "raw": {}}
+
+    enroll_ok = bool(body.get("success") or body.get("ok"))
+    return {
+        "ok": enroll_ok,
+        "error": "" if enroll_ok else body.get("message", "声纹注册失败"),
+        "raw": body,
+    }
+
+
 def _parse_duress(body: dict[str, Any]) -> tuple[bool, str]:
     if body.get("duress") or body.get("coercion"):
         return True, "coercion"

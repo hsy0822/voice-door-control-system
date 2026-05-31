@@ -6,12 +6,32 @@ import os
 from pathlib import Path
 
 # 项目根：ai-vpr-ser/
-BASE_DIR = Path(__file__).resolve().parent.parent
+try:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+except (NameError, TypeError):
+    # For -c or other cases where __file__ is not available
+    import sys
+    if hasattr(sys, '_getframe'):
+        frame = sys._getframe(1)
+        caller_file = frame.f_code.co_filename
+        if caller_file and caller_file != '<string>':
+            BASE_DIR = Path(caller_file).resolve().parent.parent
+        else:
+            BASE_DIR = Path.cwd()
+    else:
+        BASE_DIR = Path.cwd()
+
+# 加载 .env 文件
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
 
 HOST = os.environ.get("VPR_SER_HOST", "0.0.0.0")
 PORT = int(os.environ.get("VPR_SER_PORT", "8002"))
 
-DATA_DIR = Path(os.environ.get("VPR_SER_DATA_DIR", str(BASE_DIR / "data")))
+DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = Path(os.environ.get("VPR_SER_MODELS_DIR", str(BASE_DIR / "pretrained_models")))
 TEMP_DIR = Path(os.environ.get("VPR_SER_TEMP_DIR", str(BASE_DIR / "temp")))
 LOG_DIR = Path(os.environ.get("VPR_SER_LOG_DIR", str(BASE_DIR / "logs")))

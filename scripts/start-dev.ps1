@@ -1,69 +1,54 @@
-<#
+﻿<#
 .SYNOPSIS
   一键在本机打开多个终端窗口，启动后端、ASR、声纹情感、前端（可选）。
-
-.DESCRIPTION
-  默认端口：后端 8000、ASR 8090、ai-vpr-ser 8002、前端 5173。
-  使用仓库根目录 .venv 中的 Python；前端需本机已安装 Node 并可在 PATH 中找到 npm，
-  否则会自动尝试 "C:\Program Files\nodejs"。
-
-.PARAMETER NoFrontend
-  不启动前端（仅 Python 三服务）。
-
-.PARAMETER NoVprSer
-  不启动 ai-vpr-ser。
 #>
 [CmdletBinding()]
 param(
-    [switch] $NoFrontend,
-    [switch] $NoVprSer
+    [switch]$NoFrontend,
+    [switch]$NoVprSer
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
+# 定义Python路径
 $Py = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $Py)) {
-    Write-Host "未找到 $Py ，请先在仓库根目录执行: python -m venv .venv && .\.venv\Scripts\pip install -r requirements.txt" -ForegroundColor Red
+    Write-Host "错误：未找到Python环境！路径：$Py" -ForegroundColor Red
+    Write-Host "请先在仓库根目录执行：python -m venv .venv" -ForegroundColor Red
     exit 1
 }
 
+# 启动新窗口函数
 function Start-DevWindow {
-    param([string] $Command)
-    Start-Process powershell.exe -ArgumentList @("-NoExit", "-NoLogo", "-Command", $Command) -WorkingDirectory $RepoRoot
+    param([string]$Command)
+    Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $Command
 }
 
-Write-Host "仓库根: $RepoRoot" -ForegroundColor Cyan
-Write-Host "将打开新窗口启动各服务（关闭对应窗口即停止该服务）…" -ForegroundColor Cyan
+# 中文提示
+Write-Host "仓库根目录：$RepoRoot" -ForegroundColor Cyan
+Write-Host "即将打开新窗口启动所有服务（关闭窗口即停止服务）" -ForegroundColor Cyan
 
-$backendCmd = "Set-Location '$RepoRoot\backend'; & '$Py' run_server.py"
-Start-DevWindow $backendCmd
+# 启动后端服务
+Write-Host "启动后端服务（端口8000）..." -ForegroundColor Cyan
+Start-DevWindow "Set-Location '$RepoRoot\backend'; & '$Py' run_server.py"
 
-$asrCmd = "Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
-Start-DevWindow $asrCmd
+# 启动ASR服务
+Write-Host "启动ASR服务（端口8090）..." -ForegroundColor Cyan
+Start-DevWindow "Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
 
+# 启动声纹情感服务
 if (-not $NoVprSer) {
-    $vprCmd = "Set-Location '$RepoRoot\ai-vpr-ser'; & '$Py' run_server.py"
-    Start-DevWindow $vprCmd
+    Write-Host "启动声纹情感服务（端口8002）..." -ForegroundColor Cyan
+    Start-DevWindow "Set-Location '$RepoRoot\ai-vpr-ser'; & '$Py' run_server.py"
 }
 
+# 启动前端
 if (-not $NoFrontend) {
-    $npmExe = "npm"
-    foreach ($dir in @(
-            "C:\Program Files\nodejs",
-            "$env:ProgramFiles\nodejs",
-            "$env:LOCALAPPDATA\Programs\node"
-        )) {
-        $c = Join-Path $dir "npm.cmd"
-        if (Test-Path $c) {
-            $npmExe = $c
-            break
-        }
-    }
-    $feCmd = "Set-Location '$RepoRoot\frontend'; if (-not (Test-Path 'node_modules')) { & '$npmExe' install }; & '$npmExe' run dev"
-    Start-DevWindow $feCmd
+    Write-Host "启动前端服务（端口5173）..." -ForegroundColor Cyan
+    Start-DevWindow "Set-Location '$RepoRoot\frontend'; npm install; npm run dev"
 }
 
-Write-Host "已启动。前端地址一般为 http://localhost:5173" -ForegroundColor Green
-Write-Host "停止全部可用:  .\scripts\stop-dev.ps1   或关闭各窗口。" -ForegroundColor DarkGray
+Write-Host "所有服务启动完成！" -ForegroundColor Green
+Write-Host "前端访问地址：http://localhost:5173" -ForegroundColor Green
