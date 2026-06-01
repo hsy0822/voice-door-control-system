@@ -42,13 +42,8 @@
     </van-overlay>
 
     <transition name="van-fade">
-      <div v-if="result.show" class="result-panel">
-        <div v-if="result.ok" class="ok">
-          <div class="check">✓</div>
-          <p>验证通过</p>
-          <div class="lock-anim">🔓</div>
-        </div>
-        <div v-else class="fail">
+      <div v-if="result.show && !result.ok" class="result-panel">
+        <div class="fail">
           <div class="cross">✕</div>
           <p>{{ result.reason }}</p>
         </div>
@@ -60,6 +55,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useAuthStore } from '@/stores/auth'
 import { fetchChallengeApi, verifyDoorApi } from '@/api/index'
@@ -68,6 +64,7 @@ import { mockChallenge } from '@/api/mock'
 import { HoldWavRecorder } from '@/utils/wavRecorder'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const challenge = ref({ question: '', challengeId: '', passphrase: '' })
 const chLoading = ref(false)
@@ -148,6 +145,10 @@ function isDuress(payload) {
   return !!(payload?.duress || payload?.coercion || payload?.emotion === 'coercion')
 }
 
+function goUnlockWelcome() {
+  router.push('/unlock-welcome')
+}
+
 async function uploadAndVerify(blob) {
   if (!(blob instanceof Blob) || blob.size === 0) {
     showToast('无效的录音文件')
@@ -165,16 +166,16 @@ async function uploadAndVerify(blob) {
     })
 
     if (isDuress(res)) {
-      // 胁迫场景：仅展示与正常成功一致的界面，不额外 Toast/告警，避免引起注意
-      result.value = { show: true, ok: true, reason: '' }
+      // 胁迫场景：跳转与正常成功一致的开锁欢迎页，不 Toast
+      goUnlockWelcome()
       phase.value = 'idle'
       return
     }
 
     const ok = res.success === true || res.code === 0 || res.data?.success === true
     if (ok) {
-      result.value = { show: true, ok: true, reason: '' }
       showToast({ type: 'success', message: '开门成功' })
+      goUnlockWelcome()
     } else {
       const reason =
         res.reason ||
@@ -313,23 +314,6 @@ onUnmounted(() => {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   z-index: 10000;
   text-align: center;
-}
-.ok .check {
-  font-size: 48px;
-  color: #07c160;
-  font-weight: 700;
-}
-.ok .lock-anim {
-  font-size: 40px;
-  animation: unlock 0.8s ease;
-}
-@keyframes unlock {
-  from {
-    transform: rotate(-12deg) scale(0.9);
-  }
-  to {
-    transform: rotate(0) scale(1);
-  }
 }
 .fail .cross {
   font-size: 48px;
