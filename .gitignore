@@ -2,6 +2,7 @@
 node_modules/
 dist/
 .DS_Store
+frontend/package-lock.json
 
 # Python（全项目共用一个 .venv 时放在仓库根目录）
 __pycache__/
