@@ -1,0 +1,3 @@
+# 依赖已合并到仓库根目录 requirements.txt，请从项目根安装：
+#   pip install -r requirements.txt
+-r ../requirements.txt

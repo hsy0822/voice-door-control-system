@@ -1,0 +1,7 @@
+# 可选：FunASR + ModelScope（在已安装仓库根 requirements.txt 之后执行）
+#   pip install -r ai-asr/requirements-funasr.txt
+#
+# Windows 编译问题见本文件历史说明；不需要 FunASR 时请保持 ASR_ENGINE=whisper。
+-r ../requirements.txt
+funasr>=1.0.0
+modelscope>=1.11.0
