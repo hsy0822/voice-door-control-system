@@ -47,7 +47,17 @@ if (-not $NoVprSer) {
 # 启动前端
 if (-not $NoFrontend) {
     Write-Host "启动前端服务（端口5173）..." -ForegroundColor Cyan
-    Start-DevWindow "Set-Location '$RepoRoot\frontend'; npm install; npm run dev"
+    # 使用 npm 的完整路径，并设置 PATH 包含 nodejs
+    $NpmPath = "C:\Program Files\nodejs\npm.cmd"
+    $NodePath = "C:\Program Files\nodejs"
+    if (Test-Path $NpmPath) {
+        # 在新窗口中先添加 Node.js 到 PATH，然后运行 npm
+        $frontendCmd = "`$env:PATH += ';$NodePath'; Set-Location '$RepoRoot\frontend'; & '$NpmPath' install; & '$NpmPath' run dev"
+        Start-DevWindow $frontendCmd
+    } else {
+        Write-Host "警告：未找到 npm，请确保 Node.js 已正确安装" -ForegroundColor Yellow
+        Write-Host "可以尝试手动运行: cd frontend; npm install; npm run dev" -ForegroundColor Yellow
+    }
 }
 
 Write-Host "所有服务启动完成！" -ForegroundColor Green

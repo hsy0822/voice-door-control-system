@@ -114,10 +114,21 @@ class HFEmotionTransformersBackend:
         self.torch_device = torch_device
 
     def classify_path(self, wav_path: Path) -> dict[str, Any]:
-        sig, fs = torchaudio.load(str(wav_path.resolve()))
+        # 使用 soundfile 而不是 torchaudio，避免 torchcodec 依赖
+        import soundfile as sf
+        sig_np, sr = sf.read(str(wav_path.resolve()), dtype='float32')
+        
+        # 转换为 torch tensor
+        if sig_np.ndim == 1:
+            sig = torch.from_numpy(sig_np).unsqueeze(0)  # (1, T)
+        else:
+            sig = torch.from_numpy(sig_np).T  # (C, T)
+        
+        # 如果是立体声，转换为单声道
         if sig.shape[0] > 1:
             sig = sig.mean(dim=0, keepdim=True)
-        sr = int(fs)
+        
+        sr = int(sr)
         if sr != config.TARGET_SR:
             sig = torchaudio.functional.resample(
                 sig, orig_freq=sr, new_freq=config.TARGET_SR
