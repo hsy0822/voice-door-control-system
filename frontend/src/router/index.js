@@ -23,6 +23,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['resident'] },
   },
   {
+    path: '/unlock-welcome',
+    name: 'UnlockWelcome',
+    component: () => import('@/views/UnlockWelcome.vue'),
+    meta: { requiresAuth: true, roles: ['resident'] },
+  },
+  {
     path: '/voice-print',
     name: 'VoicePrint',
     component: () => import('@/views/VoicePrint.vue'),
