@@ -48,8 +48,8 @@ if (-not $NoVprSer) {
 if (-not $NoFrontend) {
     Write-Host "启动前端服务（端口5173）..." -ForegroundColor Cyan
     # 使用 npm 的完整路径，并设置 PATH 包含 nodejs
-    $NpmPath = "C:\Program Files\nodejs\npm.cmd"
-    $NodePath = "C:\Program Files\nodejs"
+    $NpmPath = "E:\apps\node\npm.cmd"
+    $NodePath = "E:\apps\node\npm"
     if (Test-Path $NpmPath) {
         # 在新窗口中先添加 Node.js 到 PATH，然后运行 npm
         $frontendCmd = "`$env:PATH += ';$NodePath'; Set-Location '$RepoRoot\frontend'; & '$NpmPath' install; & '$NpmPath' run dev"

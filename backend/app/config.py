@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production-use-long-random-string"
     access_token_expire_minutes: int = 60 * 24 * 7
 
+#写死的管理员账户在这里哦！！
     seed_admin_username: str = "admin"
     seed_admin_password: str = "admin123"
 
