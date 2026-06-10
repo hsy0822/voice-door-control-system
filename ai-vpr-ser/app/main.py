@@ -179,6 +179,7 @@ async def emotion_analyze(
     audio: UploadFile = File(...),
     user_id: str = Form("", description="可选，仅占位与后端字段对齐"),
 ) -> dict:
+    logger.info("收到情感分析请求: filename=%s user_id=%s", audio.filename, user_id)
     body = await audio.read()
     if not body:
         raise HTTPException(status_code=400, detail="音频为空")
@@ -186,6 +187,16 @@ async def emotion_analyze(
     try:
         tmp = _write_preprocessed_wav(body, f"_{_safe_name(audio.filename)}.wav")
         out = engine.classify_emotion(tmp)
+        
+        # 记录完整的情感分析结果
+        logger.info(
+            "情感分析API响应: emotion=%s confidence=%.4f duress=%s coercion=%s",
+            out["emotion"],
+            out["confidence"],
+            out["duress"],
+            out["coercion"],
+        )
+        
         return {
             "emotion": out["emotion"],
             "label": out["emotion"],
