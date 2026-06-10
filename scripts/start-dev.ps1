@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   一键在本机打开多个终端窗口，启动后端、ASR、声纹情感、前端（可选）。
 #>
@@ -34,9 +34,15 @@ Write-Host "即将打开新窗口启动所有服务（关闭窗口即停止服�
 Write-Host "启动后端服务（端口8000）..." -ForegroundColor Cyan
 Start-DevWindow "Set-Location '$RepoRoot\backend'; & '$Py' run_server.py"
 
-# 启动ASR服务
-Write-Host "启动ASR服务（端口8090）..." -ForegroundColor Cyan
-Start-DevWindow "Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+# 启动ASR服务（Whisper，本地 base.pt）
+Write-Host "启动ASR服务（端口8090，Whisper）..." -ForegroundColor Cyan
+$WhisperPt = "D:\soft\base.pt"
+if (Test-Path $WhisperPt) {
+    Start-DevWindow "`$env:ASR_ENGINE='whisper'; `$env:WHISPER_MODEL='D:/soft/base.pt'; Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+} else {
+    Write-Host "警告：未找到 $WhisperPt，ASR 将尝试在线下载 Whisper（可能失败）" -ForegroundColor Yellow
+    Start-DevWindow "`$env:ASR_ENGINE='whisper'; Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+}
 
 # 启动声纹情感服务
 if (-not $NoVprSer) {
