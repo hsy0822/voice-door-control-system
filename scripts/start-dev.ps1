@@ -47,16 +47,72 @@ if (-not $NoVprSer) {
 # 启动前端
 if (-not $NoFrontend) {
     Write-Host "启动前端服务（端口5173）..." -ForegroundColor Cyan
-    # 使用 npm 的完整路径，并设置 PATH 包含 nodejs
-    $NpmPath = "E:\apps\node\npm.cmd"
-    $NodePath = "E:\apps\node\npm"
-    if (Test-Path $NpmPath) {
+    
+    # 智能检测 Node.js 路径
+    $NpmPath = $null
+    
+    # 方法1: 检查是否在 PATH 中（推荐）
+    try {
+        $npmInPath = Get-Command npm -ErrorAction SilentlyContinue
+        if ($npmInPath) {
+            # 如果是 .ps1 文件，尝试找到对应的 .cmd 文件
+            $npmSource = $npmInPath.Source
+            if ($npmSource -like "*.ps1") {
+                $cmdPath = $npmSource -replace '\.ps1$', '.cmd'
+                if (Test-Path $cmdPath) {
+                    $NpmPath = $cmdPath
+                } else {
+                    $NpmPath = $npmSource
+                }
+            } else {
+                $NpmPath = $npmSource
+            }
+        }
+    } catch {
+        # 忽略错误
+    }
+    
+    # 方法2: 检查常见安装位置
+    if (-not $NpmPath) {
+        $commonPaths = @(
+            "C:\Program Files\nodejs\npm.cmd",
+            "C:\Program Files (x86)\nodejs\npm.cmd",
+            "$env:APPDATA\npm\npm.cmd"
+        )
+        
+        foreach ($path in $commonPaths) {
+            if (Test-Path $path) {
+                $NpmPath = $path
+                break
+            }
+        }
+    }
+    
+    # 方法3: 通过 where.exe 查找
+    if (-not $NpmPath) {
+        try {
+            $whereResult = & where.exe npm 2>$null
+            if ($whereResult) {
+                $NpmPath = $whereResult[0]
+            }
+        } catch {
+            # 忽略错误
+        }
+    }
+    
+    if ($NpmPath) {
+        $NodeDir = Split-Path $NpmPath -Parent
         # 在新窗口中先添加 Node.js 到 PATH，然后运行 npm
-        $frontendCmd = "`$env:PATH += ';$NodePath'; Set-Location '$RepoRoot\frontend'; & '$NpmPath' install; & '$NpmPath' run dev"
+        $frontendCmd = "`$env:PATH += ';$NodeDir'; Set-Location '$RepoRoot\frontend'; & '$NpmPath' install; & '$NpmPath' run dev"
         Start-DevWindow $frontendCmd
     } else {
-        Write-Host "警告：未找到 npm，请确保 Node.js 已正确安装" -ForegroundColor Yellow
-        Write-Host "可以尝试手动运行: cd frontend; npm install; npm run dev" -ForegroundColor Yellow
+        Write-Host "❌ 错误：未找到 npm！" -ForegroundColor Red
+        Write-Host "请确保 Node.js 已正确安装并添加到系统 PATH" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "常见解决方法：" -ForegroundColor Cyan
+        Write-Host "1. 重新安装 Node.js 并勾选 'Add to PATH'" -ForegroundColor White
+        Write-Host "2. 手动设置环境变量 NODE_PATH" -ForegroundColor White
+        exit 1
     }
 }
 

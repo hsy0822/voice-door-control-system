@@ -293,13 +293,45 @@ def validate_answer(question: str, recognized_text: str) -> ValidationResult:
 
     exp_num = _expected_number_for_arithmetic(q)
     if exp_num is not None:
+        # 放宽校验逻辑：只要文本中出现期望数字就通过
         got = _extract_int_from_answer(text)
-        ok = got is not None and got == exp_num
+        
+        # 方法1: 精确匹配（原有逻辑）
+        exact_match = got is not None and got == exp_num
+        
+        # 方法2: 宽松匹配 - 检查文本中是否包含期望数字
+        loose_match = False
+        if not exact_match:
+            # 检查阿拉伯数字形式
+            if str(exp_num) in text:
+                loose_match = True
+            # 检查中文数字形式（个位数 0-9）
+            elif 0 <= exp_num <= 9:
+                cn_num = [k for k, v in _CN_DIGITS.items() if v == exp_num]
+                if cn_num and cn_num[0] in text:
+                    loose_match = True
+            # 对于两位数，检查是否以中文形式出现（如"十三"）
+            elif 10 <= exp_num <= 99:
+                tens = exp_num // 10
+                ones = exp_num % 10
+                cn_tens = [k for k, v in _CN_DIGITS.items() if v == tens]
+                cn_ones = [k for k, v in _CN_DIGITS.items() if v == ones]
+                if cn_tens and cn_ones:
+                    cn_form = f"{cn_tens[0]}十{cn_ones[0]}" if ones > 0 else f"{cn_tens[0]}十"
+                    if cn_form in text:
+                        loose_match = True
+                elif ones == 0 and cn_tens:
+                    if f"{cn_tens[0]}十" in text:
+                        loose_match = True
+        
+        ok = exact_match or loose_match
+        reason_msg = "算术答案精确匹配" if exact_match else ("算术答案包含匹配" if loose_match else f"期望数字 {exp_num}，识别为 {got!r}")
+        
         return ValidationResult(
             correct=ok,
             question_type="arithmetic",
             expected_display=str(exp_num),
-            reason="算术答案匹配" if ok else f"期望数字 {exp_num}，识别为 {got!r}",
+            reason=reason_msg,
         )
 
     accepts = _match_trivia(q)
