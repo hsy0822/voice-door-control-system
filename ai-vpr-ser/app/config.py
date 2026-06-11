@@ -55,6 +55,8 @@ EMOTION_HF_MODEL = os.environ.get(
     "EMOTION_HF_MODEL",
     "superb/wav2vec2-base-superb-er",
 )
+# speechbrain（默认）| hf / transformers（仅用 EMOTION_HF_MODEL 备用模型）
+EMOTION_BACKEND = os.environ.get("EMOTION_BACKEND", "speechbrain").strip().lower()
 
 DEVICE = os.environ.get("VPR_SER_DEVICE", "cpu")
 

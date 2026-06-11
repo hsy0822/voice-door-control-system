@@ -234,6 +234,16 @@ def _load_hf_emotion_automodel() -> HFEmotionTransformersBackend:
 
 def _load_emotion_backend() -> Any:
     """优先 SpeechBrain IEMOCAP；失败时（常见：缺少 k2）改用 transformers。"""
+    backend = (config.EMOTION_BACKEND or "speechbrain").strip().lower()
+    if backend in ("hf", "transformers", "huggingface"):
+        logger.info("EMOTION_BACKEND=%s，跳过 SpeechBrain，使用 transformers: %s", backend, config.EMOTION_HF_MODEL)
+        try:
+            return _load_hf_emotion_automodel()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("transformers 情感加载失败: %s", e, exc_info=True)
+            logger.warning("情感模型不可用，将返回 neutral 占位（胁迫检测不会触发）")
+            return NeutralEmotionBackend()
+
     savedir = config.MODELS_DIR / "emotion-wav2vec2-iemocap"
     savedir.mkdir(parents=True, exist_ok=True)
     logger.info("尝试 SpeechBrain 情感模型 %s -> %s", config.EMOTION_SOURCE, savedir)
