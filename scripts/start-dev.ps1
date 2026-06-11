@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  一键在本机打开多个终端窗口，启动后端、ASR、声纹情感、前端（可选）。
+  Start backend, ASR, VPR/SER, and frontend in separate PowerShell windows.
 #>
 [CmdletBinding()]
 param(
@@ -12,109 +12,74 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
-# 定义Python路径
 $Py = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $Py)) {
-    Write-Host "错误：未找到Python环境！路径：$Py" -ForegroundColor Red
-    Write-Host "请先在仓库根目录执行：python -m venv .venv" -ForegroundColor Red
+    Write-Host "ERROR: venv not found: $Py" -ForegroundColor Red
+    Write-Host "Run in repo root: python -m venv .venv" -ForegroundColor Red
     exit 1
 }
 
-# 启动新窗口函数
 function Start-DevWindow {
     param([string]$Command)
     Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $Command
 }
 
-# 中文提示
-Write-Host "仓库根目录：$RepoRoot" -ForegroundColor Cyan
-Write-Host "即将打开新窗口启动所有服务（关闭窗口即停止服务）" -ForegroundColor Cyan
+Write-Host "Repo: $RepoRoot" -ForegroundColor Cyan
+Write-Host "Starting services (close each window to stop that service)..." -ForegroundColor Cyan
 
-# 启动后端服务
-Write-Host "启动后端服务（端口8000）..." -ForegroundColor Cyan
+Write-Host "Backend :8000" -ForegroundColor Cyan
 Start-DevWindow "Set-Location '$RepoRoot\backend'; & '$Py' run_server.py"
 
-# 启动ASR服务
-Write-Host "启动ASR服务（端口8090）..." -ForegroundColor Cyan
-Start-DevWindow "Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+Write-Host "ASR :8090 (Whisper)" -ForegroundColor Cyan
+$WhisperPt = "D:\soft\base.pt"
+if (Test-Path $WhisperPt) {
+    Start-DevWindow "`$env:ASR_ENGINE='whisper'; `$env:WHISPER_MODEL='D:/soft/base.pt'; Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+} else {
+    Write-Host "WARN: $WhisperPt not found, ASR may try online download" -ForegroundColor Yellow
+    Start-DevWindow "`$env:ASR_ENGINE='whisper'; Set-Location '$RepoRoot\ai-asr'; & '$Py' run_server.py"
+}
 
-# 启动声纹情感服务
 if (-not $NoVprSer) {
-    Write-Host "启动声纹情感服务（端口8002）..." -ForegroundColor Cyan
+    Write-Host "VPR/SER :8002" -ForegroundColor Cyan
     Start-DevWindow "Set-Location '$RepoRoot\ai-vpr-ser'; & '$Py' run_server.py"
 }
 
-# 启动前端
 if (-not $NoFrontend) {
-    Write-Host "启动前端服务（端口5173）..." -ForegroundColor Cyan
-    
-    # 智能检测 Node.js 路径
+    Write-Host "Frontend :5173" -ForegroundColor Cyan
     $NpmPath = $null
-    
-    # 方法1: 检查是否在 PATH 中（推荐）
-    try {
-        $npmInPath = Get-Command npm -ErrorAction SilentlyContinue
-        if ($npmInPath) {
-            # 如果是 .ps1 文件，尝试找到对应的 .cmd 文件
-            $npmSource = $npmInPath.Source
-            if ($npmSource -like "*.ps1") {
-                $cmdPath = $npmSource -replace '\.ps1$', '.cmd'
-                if (Test-Path $cmdPath) {
-                    $NpmPath = $cmdPath
-                } else {
-                    $NpmPath = $npmSource
-                }
-            } else {
-                $NpmPath = $npmSource
+    $npmCmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if ($npmCmd) {
+        $NpmPath = $npmCmd.Source
+    } else {
+        $npmPs1 = Get-Command npm -ErrorAction SilentlyContinue
+        if ($npmPs1) {
+            $cmdPath = $npmPs1.Source -replace '\.ps1$', '.cmd'
+            if (Test-Path $cmdPath) {
+                $NpmPath = $cmdPath
             }
         }
-    } catch {
-        # 忽略错误
     }
-    
-    # 方法2: 检查常见安装位置
     if (-not $NpmPath) {
-        $commonPaths = @(
+        $candidates = @(
             "C:\Program Files\nodejs\npm.cmd",
             "C:\Program Files (x86)\nodejs\npm.cmd",
             "$env:APPDATA\npm\npm.cmd"
         )
-        
-        foreach ($path in $commonPaths) {
-            if (Test-Path $path) {
-                $NpmPath = $path
+        foreach ($p in $candidates) {
+            if (Test-Path $p) {
+                $NpmPath = $p
                 break
             }
         }
     }
-    
-    # 方法3: 通过 where.exe 查找
-    if (-not $NpmPath) {
-        try {
-            $whereResult = & where.exe npm 2>$null
-            if ($whereResult) {
-                $NpmPath = $whereResult[0]
-            }
-        } catch {
-            # 忽略错误
-        }
-    }
-    
     if ($NpmPath) {
         $NodeDir = Split-Path $NpmPath -Parent
-        # 在新窗口中先添加 Node.js 到 PATH，然后运行 npm
         $frontendCmd = "`$env:PATH += ';$NodeDir'; Set-Location '$RepoRoot\frontend'; & '$NpmPath' install; & '$NpmPath' run dev"
         Start-DevWindow $frontendCmd
     } else {
-        Write-Host "❌ 错误：未找到 npm！" -ForegroundColor Red
-        Write-Host "请确保 Node.js 已正确安装并添加到系统 PATH" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "常见解决方法：" -ForegroundColor Cyan
-        Write-Host "1. 重新安装 Node.js 并勾选 'Add to PATH'" -ForegroundColor White
-        Write-Host "2. 手动设置环境变量 NODE_PATH" -ForegroundColor White
+        Write-Host "ERROR: npm not found. Install Node.js and add to PATH." -ForegroundColor Red
         exit 1
     }
 }
 
-Write-Host "所有服务启动完成！" -ForegroundColor Green
-Write-Host "前端访问地址：http://localhost:5173" -ForegroundColor Green
+Write-Host "All started. Open http://localhost:5173" -ForegroundColor Green

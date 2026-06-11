@@ -52,14 +52,6 @@
       </van-button>
     </div>
 
-    <template v-if="isDev">
-      <van-divider>本地预览（不接后端）</van-divider>
-      <div class="preview-row">
-        <van-button block round plain type="primary" @click="previewResident">预览住户端</van-button>
-        <van-button block round plain type="primary" class="mt-sm" @click="previewAdmin">预览管理端</van-button>
-      </div>
-    </template>
-
     <footer class="footer">© {{ year }} 动态声纹智能门禁</footer>
   </div>
 </template>
@@ -82,26 +74,6 @@ const password = ref('')
 const role = ref('resident')
 const loading = ref(false)
 const year = computed(() => new Date().getFullYear())
-/** 仅 npm run dev 时显示，打包上线后不出现 */
-const isDev = import.meta.env.DEV
-
-function previewResident() {
-  auth.setSession({
-    accessToken: 'preview-token',
-    profile: { id: 'preview-1', username: '预览住户', role: 'resident' },
-  })
-  showToast({ type: 'success', message: '已进入预览（住户）' })
-  router.replace('/user-center')
-}
-
-function previewAdmin() {
-  auth.setSession({
-    accessToken: 'preview-token',
-    profile: { id: 'preview-admin', username: '预览管理员', role: 'admin' },
-  })
-  showToast({ type: 'success', message: '已进入预览（管理员）' })
-  router.replace('/admin')
-}
 
 async function onLogin() {
   if (!username.value.trim() || !password.value) {
@@ -182,12 +154,6 @@ async function onLogin() {
 }
 .mt {
   margin-top: 12px;
-}
-.preview-row {
-  padding: 0 16px 8px;
-}
-.mt-sm {
-  margin-top: 10px;
 }
 .footer {
   margin-top: 48px;

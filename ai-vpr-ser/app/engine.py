@@ -386,7 +386,15 @@ def _max_prob(out_prob: Any) -> float:
 def classify_emotion(wav_path: Path) -> dict[str, Any]:
     emo = get_emo_model()
     if isinstance(emo, (HFEmotionTransformersBackend, NeutralEmotionBackend)):
-        return emo.classify_path(wav_path)
+        result = emo.classify_path(wav_path)
+        logger.info(
+            "情感分析结果: emotion=%s confidence=%.4f duress=%s",
+            result.get("emotion"),
+            result.get("confidence", 0.0),
+            result.get("duress", False),
+        )
+        return result
+    
     path_s = str(wav_path.resolve())
     if hasattr(emo, "classify_file"):
         raw = emo.classify_file(path_s)
@@ -411,13 +419,26 @@ def classify_emotion(wav_path: Path) -> dict[str, Any]:
     duress_prob = (not neutralish) and conf >= config.DURESS_MIN_PROB
     duress = bool(duress_sub or duress_prob)
 
-    return {
+    result = {
         "emotion": label or lab_l or "unknown",
         "confidence": round(conf, 4),
         "duress": duress,
         "coercion": duress,
         "label_raw": label,
     }
+    
+    # 记录详细的情感分析日志
+    logger.info(
+        "情感分析详情: file=%s emotion=%s confidence=%.4f duress=%s coercion=%s label_raw=%s",
+        wav_path.name,
+        result["emotion"],
+        result["confidence"],
+        result["duress"],
+        result["coercion"],
+        result["label_raw"],
+    )
+    
+    return result
 
 
 def preload_models() -> tuple[bool, bool]:

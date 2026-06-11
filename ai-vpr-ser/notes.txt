@@ -1,7 +1,7 @@
 
 必做步骤：
 # 1. 写代码前，拉取最新代码（防止冲突）
-git pull origin dev
+`git pull origin dev`
 
 # 2. 写你的代码...
 

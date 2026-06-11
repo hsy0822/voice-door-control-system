@@ -104,7 +104,6 @@ export class HoldWavRecorder {
       },
     })
     this._ctx = new AudioContext({ sampleRate: TARGET_RATE })
-    const actual = this._ctx.sampleRate
     this._source = this._ctx.createMediaStreamSource(this._stream)
     const bufferSize = 4096
     this._processor = this._ctx.createScriptProcessor(bufferSize, 1, 1)

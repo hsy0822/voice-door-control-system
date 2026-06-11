@@ -166,7 +166,6 @@ async function uploadAndVerify(blob) {
     })
 
     if (isDuress(res)) {
-      // 胁迫场景：跳转与正常成功一致的开锁欢迎页，不 Toast
       goUnlockWelcome()
       phase.value = 'idle'
       return

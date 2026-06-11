@@ -12,7 +12,6 @@
 
     <van-cell-group inset>
       <van-cell title="开门鉴权" is-link to="/open-door" icon="shield-o" />
-      <van-cell v-if="isDev" title="开锁欢迎动画（预览）" is-link to="/unlock-welcome" icon="smile-o" />
       <van-cell title="声纹管理（录入 / 重置）" is-link to="/voice-print" icon="music-o" />
       <van-cell title="访客临时授权" is-link to="/visitor-auth" icon="friends-o" />
       <van-cell title="我的出入日志" is-link to="/user-log" icon="records" />
@@ -31,7 +30,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
-const isDev = import.meta.env.DEV
 
 function onLogout() {
   showConfirmDialog({
